@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Caserne Vienne - Moniteur Live</title>
+    <title>Caserne Vienne - Live v26</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -22,17 +22,15 @@
         body, html { margin: 0; padding: 0; height: 100vh; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
         
         .container { height: 100vh; padding: 25px; display: flex; flex-direction: column; gap: 25px; }
-        
         .card {
             flex: 1; display: flex; flex-direction: column; padding: 30px;
             background: var(--glass); backdrop-filter: blur(var(--blur)); 
             border: 1px solid var(--border); border-radius: 40px; box-shadow: var(--shadow);
         }
-        
         .card-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2.5px; color: var(--accent); margin-bottom: 20px; }
         
         /* Météo Scroll */
-        .weather-scroll { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+        .weather-scroll { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 15px; scrollbar-width: none; }
         .w-item { min-width: 75px; text-align: center; padding: 15px 5px; background: var(--highlight); border-radius: 22px; border: 1px solid var(--border); }
         .w-item.now { background: linear-gradient(135deg, var(--accent) 0%, rgba(0,122,255,0.7) 100%); color: white; border: none; }
         .w-hour { font-size: 12px; font-weight: 600; opacity: 0.8; }
@@ -48,8 +46,8 @@
         .rhone-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; opacity: 0.4; margin-top: 10px; text-transform: uppercase; }
         .vigi-pill { display: inline-block; padding: 6px 14px; border-radius: 40px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: var(--highlight); border: 1px solid var(--border); }
 
-        .clock { position: absolute; top: 25px; right: 30px; font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 500; opacity: 0.6; }
-        .btn-theme { position: fixed; bottom: 30px; right: 30px; width: 45px; height: 45px; border-radius: 50%; background: var(--glass); border: 1px solid var(--border); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 100; }
+        .clock { position: absolute; top: 25px; right: 30px; font-family: 'JetBrains Mono', monospace; font-size: 22px; opacity: 0.6; }
+        .btn-theme { position: fixed; bottom: 30px; right: 30px; width: 45px; height: 45px; border-radius: 50%; background: var(--glass); border: 1px solid var(--border); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; cursor: pointer; }
     </style>
 </head>
 <body class="theme-dark">
@@ -58,14 +56,14 @@
 
     <div class="container">
         <div class="card">
-            <div class="card-title">Opérations / Caserne</div>
-            <div style="flex:1; display:flex; align-items:center; justify-content:center; opacity:0.3; font-weight:300; font-size:24px;">
-                MODULE EN ATTENTE
+            <div class="card-title">Caserne Vienne - Opérations</div>
+            <div style="flex:1; display:flex; align-items:center; justify-content:center; opacity:0.3; font-size:24px;">
+                ATTENTE DONNÉES
             </div>
         </div>
 
         <div class="card">
-            <div class="card-title">Météo Vienne & Environnement</div>
+            <div class="card-title">Vienne • Météo & Rhône</div>
             
             <div id="weatherBox" class="weather-scroll"></div>
 
@@ -75,10 +73,10 @@
                     <div id="rhoneVal" class="rhone-val">---</div>
                     <div class="rhone-info">
                         <span class="rhone-unit">m³/s</span>
-                        <div id="vigiPill" class="vigi-pill">Calcul...</div>
+                        <div id="vigiPill" class="vigi-pill">Analyse...</div>
                     </div>
                 </div>
-                <div id="rhoneTime" class="rhone-time">Dernier relevé : --:--</div>
+                <div id="rhoneTime" class="rhone-time">Initialisation...</div>
             </div>
         </div>
     </div>
@@ -108,9 +106,7 @@
                 const nowHour = new Date().getHours();
 
                 data.hourly.time.forEach((t, i) => {
-                    const date = new Date(t);
-                    const hour = date.getHours();
-                    // On affiche une heure sur deux pour gagner de la place
+                    const hour = new Date(t).getHours();
                     if (hour % 2 === 0) {
                         const isNow = (hour === nowHour || hour === nowHour - 1);
                         box.innerHTML += `
@@ -118,8 +114,7 @@
                                 <div class="w-hour">${hour}h</div>
                                 <div class="w-icon">${getWeatherIcon(data.hourly.weather_code[i])}</div>
                                 <div class="w-temp">${Math.round(data.hourly.temperature_2m[i])}°</div>
-                            </div>
-                        `;
+                            </div>`;
                     }
                 });
             } catch (e) { console.error("Erreur météo"); }
@@ -130,14 +125,12 @@
             if (code <= 3) return "🌤️";
             if (code <= 48) return "☁️";
             if (code <= 65) return "🌧️";
-            if (code <= 77) return "❄️";
-            if (code <= 99) return "⛈️";
-            return "🌫️";
+            return "⛈️";
         }
 
         async function fetchRhone() {
             try {
-                // Appel direct à Hub'Eau (Nécessite un serveur pour fonctionner sans erreur CORS)
+                // IMPORTANT : Cette URL est bloquée en LOCAL mais fonctionnera sur GITHUB ou FIREBASE
                 const url = "https://hubeau.eaufrance.fr/api/v1/hydrometrie/observations_tr?code_entite=V30300202&grandeur_hydro=Q&size=1&sort=desc";
                 const response = await fetch(url);
                 const result = await response.json();
@@ -147,39 +140,30 @@
                     const debit = Math.round(obs.resultat_obs);
                     const dateMesure = new Date(obs.date_obs);
 
-                    // Affichage du débit
                     document.getElementById('rhoneVal').innerText = debit.toLocaleString('fr-FR');
                     
-                    // Affichage de l'heure de la mesure
                     const hh = dateMesure.getHours().toString().padStart(2, '0');
                     const mm = dateMesure.getMinutes().toString().padStart(2, '0');
-                    document.getElementById('rhoneTime').innerText = `Mesure de ${hh}:${mm} • Station Ternay`;
+                    document.getElementById('rhoneTime').innerText = `Dernier relevé : ${hh}:${mm} • Station Ternay`;
 
-                    // Pill de vigilance
                     const pill = document.getElementById('vigiPill');
-                    if (debit > 2200) {
-                        pill.style.color = "#ff3b30";
-                        pill.innerText = "Débit Élevé";
-                    } else {
-                        pill.style.color = "#32d74b";
-                        pill.innerText = "Débit Normal";
-                    }
+                    pill.style.color = (debit > 2200) ? "#ff3b30" : "#32d74b";
+                    pill.innerText = (debit > 2200) ? "Débit Élevé" : "Débit Normal";
                 }
             } catch (error) {
-                console.error("Erreur Rhône:", error);
-                document.getElementById('rhoneVal').innerText = "ERR";
+                // En local, l'erreur s'affichera ici
+                document.getElementById('rhoneVal').innerText = "---";
+                document.getElementById('rhoneTime').innerText = "Attente serveur (CORS)";
             }
         }
 
-        // Lancement initial
         updateClock();
         fetchWeather();
         fetchRhone();
 
-        // Rafraîchissement
         setInterval(updateClock, 1000);
-        setInterval(fetchWeather, 3600000); // 1h
-        setInterval(fetchRhone, 600000);    // 10 min
+        setInterval(fetchWeather, 3600000);
+        setInterval(fetchRhone, 600000);
     </script>
 </body>
 </html>
