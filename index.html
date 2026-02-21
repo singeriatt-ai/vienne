@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Caserne Vienne - Moniteur Live</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: linear-gradient(135deg, #000 0%, #0a0a0a 100%);
+            --glass: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%);
+            --border: rgba(255,255,255,0.08);
+            --text: #ffffff;
+            --accent: #007AFF;
+            --blur: 50px;
+            --shadow: 0 8px 32px rgba(0,0,0,0.2);
+            --highlight: rgba(255,255,255,0.05);
+        }
+        body.theme-grey { --bg: linear-gradient(135deg, #1c1c1e 0%, #2c2c2e 100%); --glass: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%); --border: rgba(255,255,255,0.12); }
+        body.theme-light { --bg: linear-gradient(135deg, #f5f5f7 0%, #e5e5e7 100%); --glass: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.6) 100%); --border: rgba(0,0,0,0.04); --text: #1d1d1f; --highlight: rgba(0,0,0,0.02); }
+        
+        * { box-sizing: border-box; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        body, html { margin: 0; padding: 0; height: 100vh; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+        
+        .container { height: 100vh; padding: 25px; display: flex; flex-direction: column; gap: 25px; }
+        
+        .card {
+            flex: 1; display: flex; flex-direction: column; padding: 30px;
+            background: var(--glass); backdrop-filter: blur(var(--blur)); 
+            border: 1px solid var(--border); border-radius: 40px; box-shadow: var(--shadow);
+        }
+        
+        .card-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2.5px; color: var(--accent); margin-bottom: 20px; }
+        
+        /* Météo Scroll */
+        .weather-scroll { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+        .w-item { min-width: 75px; text-align: center; padding: 15px 5px; background: var(--highlight); border-radius: 22px; border: 1px solid var(--border); }
+        .w-item.now { background: linear-gradient(135deg, var(--accent) 0%, rgba(0,122,255,0.7) 100%); color: white; border: none; }
+        .w-hour { font-size: 12px; font-weight: 600; opacity: 0.8; }
+        .w-icon { font-size: 24px; margin: 8px 0; }
+        .w-temp { font-weight: 800; font-size: 17px; }
+
+        /* Rhône */
+        .rhone-section { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+        .rhone-center { display: flex; align-items: center; gap: 20px; }
+        .rhone-val { font-family: 'JetBrains Mono', monospace; font-size: 58px; font-weight: 700; letter-spacing: -3px; line-height: 1; }
+        .rhone-info { display: flex; flex-direction: column; gap: 5px; }
+        .rhone-unit { font-size: 14px; font-weight: 600; opacity: 0.5; text-transform: uppercase; }
+        .rhone-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; opacity: 0.4; margin-top: 10px; text-transform: uppercase; }
+        .vigi-pill { display: inline-block; padding: 6px 14px; border-radius: 40px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: var(--highlight); border: 1px solid var(--border); }
+
+        .clock { position: absolute; top: 25px; right: 30px; font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 500; opacity: 0.6; }
+        .btn-theme { position: fixed; bottom: 30px; right: 30px; width: 45px; height: 45px; border-radius: 50%; background: var(--glass); border: 1px solid var(--border); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 100; }
+    </style>
+</head>
+<body class="theme-dark">
+
+    <div class="clock" id="clock">00:00</div>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-title">Opérations / Caserne</div>
+            <div style="flex:1; display:flex; align-items:center; justify-content:center; opacity:0.3; font-weight:300; font-size:24px;">
+                MODULE EN ATTENTE
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Météo Vienne & Environnement</div>
+            
+            <div id="weatherBox" class="weather-scroll"></div>
+
+            <div class="rhone-section">
+                <div class="card-title" style="color:var(--text); opacity:0.6; font-size:9px; margin-bottom:10px;">Le Rhône à Ternay (V30300202)</div>
+                <div class="rhone-center">
+                    <div id="rhoneVal" class="rhone-val">---</div>
+                    <div class="rhone-info">
+                        <span class="rhone-unit">m³/s</span>
+                        <div id="vigiPill" class="vigi-pill">Calcul...</div>
+                    </div>
+                </div>
+                <div id="rhoneTime" class="rhone-time">Dernier relevé : --:--</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="btn-theme" onclick="cycleTheme()">🎨</div>
+
+    <script>
+        let themes = ['theme-dark', 'theme-grey', 'theme-light'];
+        let currentTheme = 0;
+
+        function cycleTheme() {
+            currentTheme = (currentTheme + 1) % themes.length;
+            document.body.className = themes[currentTheme];
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+        }
+
+        async function fetchWeather() {
+            try {
+                const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=45.52&longitude=4.87&hourly=temperature_2m,weather_code&timezone=Europe%2FParis&forecast_days=1");
+                const data = await res.json();
+                const box = document.getElementById('weatherBox');
+                box.innerHTML = "";
+                const nowHour = new Date().getHours();
+
+                data.hourly.time.forEach((t, i) => {
+                    const date = new Date(t);
+                    const hour = date.getHours();
+                    // On affiche une heure sur deux pour gagner de la place
+                    if (hour % 2 === 0) {
+                        const isNow = (hour === nowHour || hour === nowHour - 1);
+                        box.innerHTML += `
+                            <div class="w-item ${isNow ? 'now' : ''}">
+                                <div class="w-hour">${hour}h</div>
+                                <div class="w-icon">${getWeatherIcon(data.hourly.weather_code[i])}</div>
+                                <div class="w-temp">${Math.round(data.hourly.temperature_2m[i])}°</div>
+                            </div>
+                        `;
+                    }
+                });
+            } catch (e) { console.error("Erreur météo"); }
+        }
+
+        function getWeatherIcon(code) {
+            if (code === 0) return "☀️";
+            if (code <= 3) return "🌤️";
+            if (code <= 48) return "☁️";
+            if (code <= 65) return "🌧️";
+            if (code <= 77) return "❄️";
+            if (code <= 99) return "⛈️";
+            return "🌫️";
+        }
+
+        async function fetchRhone() {
+            try {
+                // Appel direct à Hub'Eau (Nécessite un serveur pour fonctionner sans erreur CORS)
+                const url = "https://hubeau.eaufrance.fr/api/v1/hydrometrie/observations_tr?code_entite=V30300202&grandeur_hydro=Q&size=1&sort=desc";
+                const response = await fetch(url);
+                const result = await response.json();
+
+                if (result.data && result.data.length > 0) {
+                    const obs = result.data[0];
+                    const debit = Math.round(obs.resultat_obs);
+                    const dateMesure = new Date(obs.date_obs);
+
+                    // Affichage du débit
+                    document.getElementById('rhoneVal').innerText = debit.toLocaleString('fr-FR');
+                    
+                    // Affichage de l'heure de la mesure
+                    const hh = dateMesure.getHours().toString().padStart(2, '0');
+                    const mm = dateMesure.getMinutes().toString().padStart(2, '0');
+                    document.getElementById('rhoneTime').innerText = `Mesure de ${hh}:${mm} • Station Ternay`;
+
+                    // Pill de vigilance
+                    const pill = document.getElementById('vigiPill');
+                    if (debit > 2200) {
+                        pill.style.color = "#ff3b30";
+                        pill.innerText = "Débit Élevé";
+                    } else {
+                        pill.style.color = "#32d74b";
+                        pill.innerText = "Débit Normal";
+                    }
+                }
+            } catch (error) {
+                console.error("Erreur Rhône:", error);
+                document.getElementById('rhoneVal').innerText = "ERR";
+            }
+        }
+
+        // Lancement initial
+        updateClock();
+        fetchWeather();
+        fetchRhone();
+
+        // Rafraîchissement
+        setInterval(updateClock, 1000);
+        setInterval(fetchWeather, 3600000); // 1h
+        setInterval(fetchRhone, 600000);    // 10 min
+    </script>
+</body>
+</html>
